@@ -9,6 +9,10 @@ dist/
 web-build/
 expo-env.d.ts
 
+# Expo Go builds downloaded with the `expo-go` CLI
+Expo-Go-*.apk
+Expo-Go-*.app
+
 # Native
 .kotlin/
 *.orig.*
