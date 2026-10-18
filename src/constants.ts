@@ -1,0 +1,45 @@
+import type { Settings } from './types';
+
+/** Ring colours, handed out in order as fingers land. Tuned for a black background. */
+export const PALETTE = [
+  '#FF6B6B',
+  '#FFD166',
+  '#4ADE80',
+  '#4D96FF',
+  '#C77DFF',
+  '#FF9F45',
+  '#2DD4BF',
+  '#FF5FA2',
+  '#A3E635',
+  '#60A5FA',
+];
+
+export const PLAYER_OPTIONS: Array<number | null> = [
+  null,
+  2,
+  3,
+  4,
+  5,
+  6,
+  7,
+  8,
+  9,
+  10,
+];
+
+export const HOLD_OPTIONS: Array<{ label: string; ms: number }> = [
+  { label: 'Fast · 1.5s', ms: 1500 },
+  { label: 'Normal · 2.5s', ms: 2500 },
+  { label: 'Long · 3.5s', ms: 3500 },
+];
+
+export const CURRENCY_OPTIONS = ['₹', '$', '€', '£', '¥'];
+
+export const DEFAULT_SETTINGS: Settings = {
+  exactPlayers: null,
+  holdMs: 2500,
+  currency: '₹',
+};
+
+/** Absolute minimum number of fingers needed to run a pick. */
+export const MIN_PLAYERS = 2;
