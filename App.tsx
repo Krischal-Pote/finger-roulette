@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
-import * as Haptics from 'expo-haptics';
 import { useKeepAwake } from 'expo-keep-awake';
 import { useAudioPlayer, setAudioModeAsync } from 'expo-audio';
 import {
@@ -15,6 +14,11 @@ import { SettingsSheet } from './src/components/SettingsSheet';
 import { StatusOverlay } from './src/components/StatusOverlay';
 import { DEFAULT_SETTINGS, MIN_PLAYERS, SAFE_PAUSE_MS } from './src/constants';
 import { useMultiTouch } from './src/hooks/useMultiTouch';
+import {
+  hapticImpact,
+  hapticResult,
+  hapticTick,
+} from './src/lib/haptics';
 import { formatMoney, parseAmount } from './src/lib/money';
 import { pickRandomIndex } from './src/lib/random';
 import type { RingMode } from './src/components/FingerRing';
@@ -113,7 +117,7 @@ function Game() {
     const target = list[targetIndex];
 
     if (haptics) {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+      hapticImpact();
     }
     setPhase('spinning');
     setProgress(0);
@@ -128,7 +132,7 @@ function Game() {
       setHighlightId(list[index].id);
       if (step > 0) {
         if (haptics) {
-          Haptics.selectionAsync().catch(() => {});
+          hapticTick();
         }
         if (sound) {
           replay(sounds.tick);
@@ -150,9 +154,7 @@ function Game() {
             replay(sounds.pay);
           }
           if (haptics) {
-            Haptics.notificationAsync(
-              Haptics.NotificationFeedbackType.Error,
-            ).catch(() => {});
+            hapticResult(false);
           }
         } else {
           // They're safe. Show it, then let the rest hold again.
@@ -161,9 +163,7 @@ function Game() {
             replay(sounds.safe);
           }
           if (haptics) {
-            Haptics.notificationAsync(
-              Haptics.NotificationFeedbackType.Success,
-            ).catch(() => {});
+            hapticResult(true);
           }
           safeTimer.current = setTimeout(() => {
             setPhase('idle');
@@ -334,9 +334,12 @@ function Game() {
         visible={settingsOpen}
         settings={settings}
         maxSeen={maxSeen}
-        onChange={(patch) =>
-          setSettings((prev) => ({ ...prev, ...patch }))
-        }
+        onChange={(patch) => {
+          if (patch.haptics === true && !settings.haptics) {
+            hapticImpact();
+          }
+          setSettings((prev) => ({ ...prev, ...patch }));
+        }}
         onClose={() => setSettingsOpen(false)}
       />
     </View>

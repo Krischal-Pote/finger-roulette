@@ -33,12 +33,12 @@ export const HOLD_OPTIONS: { label: string; ms: number }[] = [
   { label: 'Long · 3.5s', ms: 3500 },
 ];
 
-export const CURRENCY_OPTIONS = ['₹', '$', '€', '£', '¥'];
+export const CURRENCY_OPTIONS = ['रू', '$', '€', '£', '¥'];
 
 export const DEFAULT_SETTINGS: Settings = {
   exactPlayers: null,
   holdMs: 2500,
-  currency: '₹',
+  currency: 'रू',
   sound: true,
   haptics: true,
 };

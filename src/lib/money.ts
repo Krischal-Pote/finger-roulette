@@ -11,7 +11,7 @@ export function parseAmount(text: string): number | null {
   return value;
 }
 
-/** `1234.5` + `₹` -> `₹1234.50`, but whole numbers stay short: `₹1235`. */
+/** `1234.5` + `रू` -> `रू1234.50`, but whole numbers stay short: `रू1235`. */
 export function formatMoney(amount: number, currency: string): string {
   const rounded = Math.round(amount * 100) / 100;
   const text = Number.isInteger(rounded)
