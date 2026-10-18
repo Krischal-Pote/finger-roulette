@@ -14,9 +14,11 @@ export type Finger = {
 /**
  * idle     – collecting fingers / running the hold countdown
  * spinning – the roulette animation is running (touches ignored, set frozen)
- * result   – a finger has been picked (touches ignored, winner frozen)
+ * safe     – a finger was just picked and is now out (touches ignored). Shown
+ *            briefly, then the remaining fingers hold again for the next round.
+ * result   – one finger is left; that player pays the whole bill.
  */
-export type Phase = 'idle' | 'spinning' | 'result';
+export type Phase = 'idle' | 'spinning' | 'safe' | 'result';
 
 export type Settings = {
   /** Players required to start. `null` means "at least 2, any number". */

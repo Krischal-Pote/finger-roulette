@@ -2,7 +2,7 @@ import { StyleSheet, Text, View } from 'react-native';
 
 import type { Finger } from '../types';
 
-export type RingMode = 'idle' | 'highlight' | 'winner' | 'dim';
+export type RingMode = 'idle' | 'highlight' | 'winner' | 'dim' | 'safe';
 
 const RADIUS = 44;
 
@@ -15,6 +15,7 @@ type Props = {
 export function FingerRing({ finger, mode }: Props) {
   const size = RADIUS * 2;
   const isWinner = mode === 'winner';
+  const isSafe = mode === 'safe';
 
   return (
     <View
@@ -30,7 +31,7 @@ export function FingerRing({ finger, mode }: Props) {
           borderColor: finger.color,
           borderWidth: isWinner ? 9 : 6,
           backgroundColor: `${finger.color}${isWinner ? '66' : '1f'}`,
-          opacity: mode === 'dim' ? 0.22 : 1,
+          opacity: mode === 'dim' || isSafe ? 0.22 : 1,
           transform: [
             { scale: isWinner ? 1.35 : mode === 'highlight' ? 1.18 : 1 },
           ],
@@ -39,7 +40,7 @@ export function FingerRing({ finger, mode }: Props) {
       ]}
     >
       <Text style={[styles.label, { color: finger.color }]}>
-        {finger.order}
+        {isSafe ? '✓' : finger.order}
       </Text>
     </View>
   );

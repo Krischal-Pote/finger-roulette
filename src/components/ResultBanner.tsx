@@ -6,22 +6,21 @@ import type { Finger } from '../types';
 type Props = {
   winner: Finger | null;
   playerCount: number;
-  perPerson: number | null;
+  bill: number | null;
   currency: string;
 };
 
-/** The card shown once a finger has been picked. */
 export function ResultBanner({
   winner,
   playerCount,
-  perPerson,
+  bill,
   currency,
 }: Props) {
   if (!winner) {
     return null;
   }
 
-  const payers = Math.max(0, playerCount - 1);
+  const safeCount = Math.max(0, playerCount - 1);
 
   return (
     <View pointerEvents="none" style={styles.wrap}>
@@ -30,24 +29,23 @@ export function ResultBanner({
         <Text style={[styles.big, { color: winner.color }]}>
           Finger #{winner.order}
         </Text>
-        <Text style={styles.free}>doesn&apos;t pay 🎉</Text>
+        <Text style={styles.free}>pays it all 💸</Text>
 
         <View style={styles.divider} />
 
-        {perPerson !== null ? (
+        {bill !== null ? (
           <>
             <Text style={styles.split}>
-              {payers} other{payers === 1 ? '' : 's'} pay{' '}
-              {formatMoney(perPerson, currency)} each
+              They owe {formatMoney(bill, currency)}
             </Text>
             <Text style={styles.splitHint}>
-              {playerCount} people · {formatMoney(perPerson * payers, currency)}{' '}
-              bill
+              {safeCount} other{safeCount === 1 ? '' : 's'} got lucky and pay
+              nothing.
             </Text>
           </>
         ) : (
           <Text style={styles.splitHint}>
-            Type the bill total above to see what each person owes.
+            Type the bill total above to see how much they owe.
           </Text>
         )}
       </View>

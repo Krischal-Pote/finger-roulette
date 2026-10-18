@@ -12,7 +12,7 @@ import { FingerRing } from './src/components/FingerRing';
 import { ResultBanner } from './src/components/ResultBanner';
 import { SettingsSheet } from './src/components/SettingsSheet';
 import { StatusOverlay } from './src/components/StatusOverlay';
-import { DEFAULT_SETTINGS, MIN_PLAYERS } from './src/constants';
+import { DEFAULT_SETTINGS, MIN_PLAYERS, SAFE_PAUSE_MS } from './src/constants';
 import { useMultiTouch } from './src/hooks/useMultiTouch';
 import { formatMoney, parseAmount } from './src/lib/money';
 import { pickRandomIndex } from './src/lib/random';
@@ -38,8 +38,14 @@ function Game() {
   const [winner, setWinner] = useState<Finger | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [maxSeen, setMaxSeen] = useState(0);
+  // Touch ids that have already been picked out of the running ("safe").
+  const [eliminated, setEliminated] = useState<number[]>([]);
+  // Label of the finger picked in the last round, for the "safe" banner.
+  const [safeOrder, setSafeOrder] = useState<number | null>(null);
+  // How many players started the round, so the result can say "N got lucky".
+  const [rosterSize, setRosterSize] = useState(0);
 
-  // Fingers are only read while collecting. During the spin and on the result
+  // Fingers are only read while collecting. During the spin and between rounds
   // the set is frozen, so the pick can never change under the players.
   const interactive = phase === 'idle' && !settingsOpen;
   const { fingers, surfaceRef, measureSurface, resetFingers, touchHandlers } =
@@ -51,19 +57,29 @@ function Game() {
     setMaxSeen((prev) => Math.max(prev, fingers.length));
   }, [fingers]);
 
+  // Elimination is tracked by touch id, so a picked finger stays out even while
+  // the player is still lifting their hand.
+  const eliminatedRef = useRef<number[]>([]);
+  useEffect(() => {
+    eliminatedRef.current = eliminated;
+  }, [eliminated]);
+
   const spinTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const safeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const startSpin = useCallback(() => {
-    const list = fingersRef.current;
+    const eliminatedIds = eliminatedRef.current;
+    // Only fingers still in the running can be picked.
+    const list = fingersRef.current.filter(
+      (finger) => !eliminatedIds.includes(finger.id),
+    );
     if (list.length < MIN_PLAYERS) {
       return;
     }
 
     const total = list.length;
-    // The winner is drawn up front and the animation only reveals it, so the
-    // result cannot depend on how the rings happen to be laid out.
-    const winnerIndex = pickRandomIndex(total);
-    const target = list[winnerIndex];
+    const targetIndex = pickRandomIndex(total);
+    const target = list[targetIndex];
 
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
     setPhase('spinning');
@@ -75,7 +91,7 @@ function Game() {
     const tick = () => {
       // Walk the rings and land exactly on the drawn finger.
       const index =
-        (((winnerIndex - (SPIN_STEPS - 1) + step) % total) + total) % total;
+        (((targetIndex - (SPIN_STEPS - 1) + step) % total) + total) % total;
       setHighlightId(list[index].id);
       if (step > 0) {
         Haptics.selectionAsync().catch(() => {});
@@ -83,11 +99,28 @@ function Game() {
       step += 1;
 
       if (step >= SPIN_STEPS) {
-        setWinner(target);
-        setPhase('result');
-        Haptics.notificationAsync(
-          Haptics.NotificationFeedbackType.Success,
-        ).catch(() => {});
+        setHighlightId(null);
+        setSafeOrder(target.order);
+        setRosterSize((prev) => (prev === 0 ? total : prev));
+        setEliminated([...eliminatedIds, target.id]);
+
+        const remaining = list.filter((finger) => finger.id !== target.id);
+        if (remaining.length <= 1) {
+          setWinner(remaining[0] ?? target);
+          setPhase('result');
+          Haptics.notificationAsync(
+            Haptics.NotificationFeedbackType.Error,
+          ).catch(() => {});
+        } else {
+          // They're safe. Show it, then let the rest hold again.
+          setPhase('safe');
+          Haptics.notificationAsync(
+            Haptics.NotificationFeedbackType.Success,
+          ).catch(() => {});
+          safeTimer.current = setTimeout(() => {
+            setPhase('idle');
+          }, SAFE_PAUSE_MS);
+        }
         return;
       }
 
@@ -103,15 +136,25 @@ function Game() {
       if (spinTimer.current) {
         clearTimeout(spinTimer.current);
       }
+      if (safeTimer.current) {
+        clearTimeout(safeTimer.current);
+      }
     };
   }, []);
 
+  const activeFingers = fingers.filter(
+    (finger) => !eliminated.includes(finger.id),
+  );
+  const started = eliminated.length > 0 || winner !== null;
   const required = settings.exactPlayers ?? MIN_PLAYERS;
-  const countOk = fingers.length >= required;
+  const minNeeded = started ? MIN_PLAYERS : required;
+  const countOk = activeFingers.length >= minNeeded;
   const exactOk =
-    settings.exactPlayers === null || fingers.length === settings.exactPlayers;
+    started ||
+    settings.exactPlayers === null ||
+    activeFingers.length === settings.exactPlayers;
   const holding = phase === 'idle' && countOk && exactOk;
-  const fingerKey = fingers.map((finger) => finger.id).join('|');
+  const fingerKey = activeFingers.map((finger) => finger.id).join('|');
 
   // The hold countdown restarts whenever the group changes - someone joining
   // late or lifting a finger. Wiggling in place does not reset it.
@@ -139,23 +182,31 @@ function Game() {
       clearTimeout(spinTimer.current);
       spinTimer.current = null;
     }
+    if (safeTimer.current) {
+      clearTimeout(safeTimer.current);
+      safeTimer.current = null;
+    }
     setPhase('idle');
     setWinner(null);
     setHighlightId(null);
+    setSafeOrder(null);
+    setEliminated([]);
+    setRosterSize(0);
     setProgress(0);
     resetFingers();
   }, [resetFingers]);
 
   const bill = parseAmount(billText);
-  const payers = Math.max(0, fingers.length - 1);
-  const perPerson = bill !== null && payers > 0 ? bill / payers : null;
 
   const modeOf = (finger: Finger): RingMode => {
-    if (phase === 'result') {
-      return winner?.id === finger.id ? 'winner' : 'dim';
+    if (phase === 'result' && winner?.id === finger.id) {
+      return 'winner';
     }
-    if (phase === 'spinning') {
-      return finger.id === highlightId ? 'highlight' : 'idle';
+    if (eliminated.includes(finger.id)) {
+      return 'safe';
+    }
+    if (phase === 'spinning' && finger.id === highlightId) {
+      return 'highlight';
     }
     return 'idle';
   };

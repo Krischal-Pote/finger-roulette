@@ -10,6 +10,7 @@ type Props = {
   holding: boolean;
   progress: number;
   holdMs: number;
+  safeOrder: number | null;
 };
 
 /** The instruction / countdown text shown above the fingers, on the black surface. */
@@ -21,6 +22,7 @@ export function StatusOverlay({
   holding,
   progress,
   holdMs,
+  safeOrder,
 }: Props) {
   if (phase === 'result') {
     return null;
@@ -29,10 +31,17 @@ export function StatusOverlay({
   let title: string;
   let subtitle: string | null = null;
 
-  if (phase === 'spinning') {
+  if (phase === 'safe') {
+    title = safeOrder !== null ? `Finger #${safeOrder} is safe` : 'Safe!';
+    subtitle = `${count} finger${count === 1 ? '' : 's'} left — lift yours, the rest keep holding.`;
+  } else if (phase === 'spinning') {
     title = 'Choosing…';
     subtitle = 'Fingers off! Keep holding.';
-  } else if (exactPlayers !== null && count > 0 && count !== exactPlayers) {
+  } else if (
+    exactPlayers !== null &&
+    count > 0 &&
+    count !== exactPlayers
+  ) {
     title = `Waiting for exactly ${exactPlayers} players`;
     subtitle = `${count} finger${count === 1 ? '' : 's'} on the screen`;
   } else if (count === 0) {

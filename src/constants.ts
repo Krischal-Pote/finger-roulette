@@ -43,3 +43,5 @@ export const DEFAULT_SETTINGS: Settings = {
 
 /** Absolute minimum number of fingers needed to run a pick. */
 export const MIN_PLAYERS = 2;
+
+export const SAFE_PAUSE_MS = 1400;
