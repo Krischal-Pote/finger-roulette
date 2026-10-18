@@ -27,4 +27,8 @@ export type Settings = {
   holdMs: number;
   /** Symbol prefixed to money amounts. */
   currency: string;
+  /** Play sound effects during the spin and the results. */
+  sound: boolean;
+  /** Fire haptic feedback during the spin and the results. */
+  haptics: boolean;
 };

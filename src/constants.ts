@@ -39,6 +39,8 @@ export const DEFAULT_SETTINGS: Settings = {
   exactPlayers: null,
   holdMs: 2500,
   currency: '₹',
+  sound: true,
+  haptics: true,
 };
 
 /** Absolute minimum number of fingers needed to run a pick. */

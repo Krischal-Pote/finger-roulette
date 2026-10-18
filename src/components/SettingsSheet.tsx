@@ -107,6 +107,23 @@ export function SettingsSheet({
               ))}
             </View>
 
+            <Text style={styles.groupLabel}>Feedback</Text>
+            <Text style={styles.groupHint}>
+              Sound effects and vibration during the spin and the results.
+            </Text>
+            <View style={styles.row}>
+              <Chip
+                label={settings.sound ? 'Sound on' : 'Sound off'}
+                selected={settings.sound}
+                onPress={() => onChange({ sound: !settings.sound })}
+              />
+              <Chip
+                label={settings.haptics ? 'Vibration on' : 'Vibration off'}
+                selected={settings.haptics}
+                onPress={() => onChange({ haptics: !settings.haptics })}
+              />
+            </View>
+
             <Text style={styles.info}>
               {maxSeen > 0
                 ? `This device has reported up to ${maxSeen} fingers at once.`

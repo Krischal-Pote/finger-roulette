@@ -3,6 +3,7 @@ import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import * as Haptics from 'expo-haptics';
 import { useKeepAwake } from 'expo-keep-awake';
+import { useAudioPlayer, setAudioModeAsync } from 'expo-audio';
 import {
   SafeAreaProvider,
   useSafeAreaInsets,
@@ -25,6 +26,14 @@ const SPIN_FIRST_DELAY_MS = 40;
 const SPIN_SLOWDOWN = 1.1;
 const TICK_MS = 50;
 
+type Player = ReturnType<typeof useAudioPlayer>;
+
+/** Restart a one-shot sound from the beginning. */
+function replay(player: Player) {
+  player.seekTo(0);
+  player.play();
+}
+
 function Game() {
   // Nobody should have to hold the screen awake with a finger.
   useKeepAwake();
@@ -44,6 +53,25 @@ function Game() {
   const [safeOrder, setSafeOrder] = useState<number | null>(null);
   // How many players started the round, so the result can say "N got lucky".
   const [rosterSize, setRosterSize] = useState(0);
+
+  // Short sound effects, generated in scripts/generate-sounds.js.
+  const tickPlayer = useAudioPlayer(require('./assets/sounds/tick.wav'));
+  const safePlayer = useAudioPlayer(require('./assets/sounds/safe.wav'));
+  const payPlayer = useAudioPlayer(require('./assets/sounds/pay.wav'));
+
+  // Latest settings + sounds, read inside the spin timer without re-creating it
+  // (re-creating startSpin would restart the hold countdown mid-round).
+  const settingsRef = useRef(settings);
+  const soundsRef = useRef({ tick: tickPlayer, safe: safePlayer, pay: payPlayer });
+  useEffect(() => {
+    settingsRef.current = settings;
+    soundsRef.current = { tick: tickPlayer, safe: safePlayer, pay: payPlayer };
+  });
+
+  // Keep game sounds audible even when the phone is on silent (iOS).
+  useEffect(() => {
+    setAudioModeAsync({ playsInSilentMode: true }).catch(() => {});
+  }, []);
 
   // Fingers are only read while collecting. During the spin and between rounds
   // the set is frozen, so the pick can never change under the players.
@@ -77,11 +105,16 @@ function Game() {
       return;
     }
 
+    const { sound, haptics } = settingsRef.current;
+    const sounds = soundsRef.current;
+
     const total = list.length;
     const targetIndex = pickRandomIndex(total);
     const target = list[targetIndex];
 
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+    if (haptics) {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+    }
     setPhase('spinning');
     setProgress(0);
 
@@ -94,7 +127,12 @@ function Game() {
         (((targetIndex - (SPIN_STEPS - 1) + step) % total) + total) % total;
       setHighlightId(list[index].id);
       if (step > 0) {
-        Haptics.selectionAsync().catch(() => {});
+        if (haptics) {
+          Haptics.selectionAsync().catch(() => {});
+        }
+        if (sound) {
+          replay(sounds.tick);
+        }
       }
       step += 1;
 
@@ -108,15 +146,25 @@ function Game() {
         if (remaining.length <= 1) {
           setWinner(remaining[0] ?? target);
           setPhase('result');
-          Haptics.notificationAsync(
-            Haptics.NotificationFeedbackType.Error,
-          ).catch(() => {});
+          if (sound) {
+            replay(sounds.pay);
+          }
+          if (haptics) {
+            Haptics.notificationAsync(
+              Haptics.NotificationFeedbackType.Error,
+            ).catch(() => {});
+          }
         } else {
           // They're safe. Show it, then let the rest hold again.
           setPhase('safe');
-          Haptics.notificationAsync(
-            Haptics.NotificationFeedbackType.Success,
-          ).catch(() => {});
+          if (sound) {
+            replay(sounds.safe);
+          }
+          if (haptics) {
+            Haptics.notificationAsync(
+              Haptics.NotificationFeedbackType.Success,
+            ).catch(() => {});
+          }
           safeTimer.current = setTimeout(() => {
             setPhase('idle');
           }, SAFE_PAUSE_MS);
@@ -255,19 +303,20 @@ function Game() {
 
         <StatusOverlay
           phase={phase}
-          count={fingers.length}
-          required={required}
-          exactPlayers={settings.exactPlayers}
+          count={activeFingers.length}
+          required={minNeeded}
+          exactPlayers={started ? null : settings.exactPlayers}
           holding={holding}
           progress={progress}
           holdMs={settings.holdMs}
+          safeOrder={safeOrder}
         />
 
         {phase === 'result' ? (
           <ResultBanner
             winner={winner}
-            playerCount={fingers.length}
-            perPerson={perPerson}
+            playerCount={rosterSize}
+            bill={bill}
             currency={settings.currency}
           />
         ) : null}
