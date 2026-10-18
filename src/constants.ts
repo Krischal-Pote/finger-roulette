@@ -14,7 +14,7 @@ export const PALETTE = [
   '#60A5FA',
 ];
 
-export const PLAYER_OPTIONS: Array<number | null> = [
+export const PLAYER_OPTIONS: (number | null)[] = [
   null,
   2,
   3,
@@ -27,7 +27,7 @@ export const PLAYER_OPTIONS: Array<number | null> = [
   10,
 ];
 
-export const HOLD_OPTIONS: Array<{ label: string; ms: number }> = [
+export const HOLD_OPTIONS: { label: string; ms: number }[] = [
   { label: 'Fast · 1.5s', ms: 1500 },
   { label: 'Normal · 2.5s', ms: 2500 },
   { label: 'Long · 3.5s', ms: 3500 },

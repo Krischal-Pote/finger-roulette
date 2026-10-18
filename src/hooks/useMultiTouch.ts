@@ -1,8 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { GestureResponderEvent, View } from 'react-native';
+import { View } from 'react-native';
+import type { ComponentRef } from 'react';
+import type { GestureResponderEvent } from 'react-native';
 
 import { PALETTE } from '../constants';
 import type { Finger } from '../types';
+
+/** The native handle behind a `<View>`: what `measureInWindow` lives on. */
+export type SurfaceHandle = ComponentRef<typeof View>;
 
 /** Fingers slightly outside the surface still count, so edge presses don't flicker away. */
 const BOUNDS_PADDING = 24;
@@ -22,7 +27,7 @@ const BOUNDS_PADDING = 24;
  * - are ignored.
  */
 export function useMultiTouch(enabled: boolean) {
-  const surfaceRef = useRef<View | null>(null);
+  const surfaceRef = useRef<SurfaceHandle | null>(null);
   const originRef = useRef({ x: 0, y: 0 });
   const sizeRef = useRef({ width: 0, height: 0 });
   /** Colour + label held per touch id for as long as the finger stays down. */
