@@ -16,9 +16,12 @@ export type Finger = {
  * spinning – the roulette animation is running (touches ignored, set frozen)
  * safe     – a finger was just picked and is now out (touches ignored). Shown
  *            briefly, then the remaining fingers hold again for the next round.
- * result   – one finger is left; that player pays the whole bill.
+ * result   – one finger is left; the round is over and the bill is shown.
  */
 export type Phase = 'idle' | 'spinning' | 'safe' | 'result';
+
+
+export type SplitMode = 'one-pays' | 'weighted';
 
 export type Settings = {
   /** Players required to start. `null` means "at least 2, any number". */
@@ -27,6 +30,8 @@ export type Settings = {
   holdMs: number;
   /** Symbol prefixed to money amounts. */
   currency: string;
+  /** Who pays: one unlucky player, or a weighted split for everyone. */
+  splitMode: SplitMode;
   /** Play sound effects during the spin and the results. */
   sound: boolean;
   /** Fire haptic feedback during the spin and the results. */

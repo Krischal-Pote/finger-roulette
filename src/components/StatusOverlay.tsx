@@ -1,6 +1,6 @@
 import { StyleSheet, Text, View } from 'react-native';
 
-import type { Phase } from '../types';
+import type { Phase, SplitMode } from '../types';
 
 type Props = {
   phase: Phase;
@@ -11,6 +11,7 @@ type Props = {
   progress: number;
   holdMs: number;
   safeOrder: number | null;
+  splitMode: SplitMode;
 };
 
 /** The instruction / countdown text shown above the fingers, on the black surface. */
@@ -23,6 +24,7 @@ export function StatusOverlay({
   progress,
   holdMs,
   safeOrder,
+  splitMode,
 }: Props) {
   if (phase === 'result') {
     return null;
@@ -32,7 +34,14 @@ export function StatusOverlay({
   let subtitle: string | null = null;
 
   if (phase === 'safe') {
-    title = safeOrder !== null ? `Finger #${safeOrder} is safe` : 'Safe!';
+    title =
+      safeOrder !== null
+        ? splitMode === 'weighted'
+          ? `Finger #${safeOrder} picked`
+          : `Finger #${safeOrder} is safe`
+        : splitMode === 'weighted'
+          ? 'Picked!'
+          : 'Safe!';
     subtitle = `${count} finger${count === 1 ? '' : 's'} left — lift yours, the rest keep holding.`;
   } else if (phase === 'spinning') {
     title = 'Choosing…';
@@ -55,7 +64,10 @@ export function StatusOverlay({
     subtitle = `${Math.ceil((1 - progress) * (holdMs / 1000))}s`;
   } else {
     title = `${count} finger${count === 1 ? '' : 's'} in`;
-    subtitle = 'Get set.';
+    subtitle =
+      splitMode === 'weighted'
+        ? 'Get set — first picked pays least, last pays most.'
+        : 'Get set.';
   }
 
   return (

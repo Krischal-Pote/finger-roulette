@@ -9,6 +9,7 @@ import {
 } from 'react-native-safe-area-context';
 
 import { FingerRing } from './src/components/FingerRing';
+import { HelpSheet } from './src/components/HelpSheet';
 import { ResultBanner } from './src/components/ResultBanner';
 import { SettingsSheet } from './src/components/SettingsSheet';
 import { StatusOverlay } from './src/components/StatusOverlay';
@@ -19,7 +20,7 @@ import {
   hapticResult,
   hapticTick,
 } from './src/lib/haptics';
-import { formatMoney, parseAmount } from './src/lib/money';
+import { parseAmount } from './src/lib/money';
 import { pickRandomIndex } from './src/lib/random';
 import type { RingMode } from './src/components/FingerRing';
 import type { Finger, Phase, Settings } from './src/types';
@@ -29,6 +30,8 @@ const SPIN_STEPS = 22;
 const SPIN_FIRST_DELAY_MS = 40;
 const SPIN_SLOWDOWN = 1.1;
 const TICK_MS = 50;
+
+let guideSeen = false;
 
 type Player = ReturnType<typeof useAudioPlayer>;
 
@@ -57,6 +60,11 @@ function Game() {
   const [safeOrder, setSafeOrder] = useState<number | null>(null);
   // How many players started the round, so the result can say "N got lucky".
   const [rosterSize, setRosterSize] = useState(0);
+  // Fingers in the order they were picked. Used by the weighted split.
+  const [picked, setPicked] = useState<Finger[]>([]);
+  // The guide opens by itself the first time the app runs, then lives behind
+  // the "?" button in the header.
+  const [helpOpen, setHelpOpen] = useState(!guideSeen);
 
   // Short sound effects, generated in scripts/generate-sounds.js.
   const tickPlayer = useAudioPlayer(require('./assets/sounds/tick.wav'));
@@ -75,6 +83,11 @@ function Game() {
   // Keep game sounds audible even when the phone is on silent (iOS).
   useEffect(() => {
     setAudioModeAsync({ playsInSilentMode: true }).catch(() => {});
+  }, []);
+
+  // Remember that the launch guide has been shown, so it only appears once.
+  useEffect(() => {
+    guideSeen = true;
   }, []);
 
   // Fingers are only read while collecting. During the spin and between rounds
@@ -145,6 +158,7 @@ function Game() {
         setSafeOrder(target.order);
         setRosterSize((prev) => (prev === 0 ? total : prev));
         setEliminated([...eliminatedIds, target.id]);
+        setPicked((prev) => [...prev, target]);
 
         const remaining = list.filter((finger) => finger.id !== target.id);
         if (remaining.length <= 1) {
@@ -240,6 +254,7 @@ function Game() {
     setSafeOrder(null);
     setEliminated([]);
     setRosterSize(0);
+    setPicked([]);
     setProgress(0);
     resetFingers();
   }, [resetFingers]);
@@ -282,13 +297,26 @@ function Game() {
           ) : null}
         </View>
 
-        <Pressable
-          style={styles.settingsButton}
-          onPress={() => setSettingsOpen(true)}
-          hitSlop={8}
-        >
-          <Text style={styles.settingsIcon}>⚙</Text>
-        </Pressable>
+        <View style={styles.headerActions}>
+          <Pressable
+            style={styles.iconButton}
+            onPress={() => setHelpOpen(true)}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel="How to play"
+          >
+            <Text style={styles.helpIcon}>?</Text>
+          </Pressable>
+          <Pressable
+            style={styles.iconButton}
+            onPress={() => setSettingsOpen(true)}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel="Settings"
+          >
+            <Text style={styles.settingsIcon}>⚙</Text>
+          </Pressable>
+        </View>
       </View>
 
       <View
@@ -310,14 +338,17 @@ function Game() {
           progress={progress}
           holdMs={settings.holdMs}
           safeOrder={safeOrder}
+          splitMode={settings.splitMode}
         />
 
         {phase === 'result' ? (
           <ResultBanner
             winner={winner}
+            picked={picked}
             playerCount={rosterSize}
             bill={bill}
             currency={settings.currency}
+            splitMode={settings.splitMode}
           />
         ) : null}
       </View>
@@ -341,6 +372,17 @@ function Game() {
           setSettings((prev) => ({ ...prev, ...patch }));
         }}
         onClose={() => setSettingsOpen(false)}
+      />
+
+      <HelpSheet
+        visible={helpOpen}
+        onClose={() => setHelpOpen(false)}
+        onOpenSettings={() => {
+          setHelpOpen(false);
+          // Let the guide finish dismissing before presenting the settings
+          // sheet - iOS will not stack two modals in the same frame.
+          setTimeout(() => setSettingsOpen(true), 320);
+        }}
       />
     </View>
   );
@@ -394,7 +436,11 @@ const styles = StyleSheet.create({
     color: '#6B6B76',
     fontSize: 15,
   },
-  settingsButton: {
+  headerActions: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  iconButton: {
     width: 44,
     height: 44,
     borderRadius: 13,
@@ -403,6 +449,11 @@ const styles = StyleSheet.create({
     backgroundColor: '#101016',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  helpIcon: {
+    color: '#A8A8B4',
+    fontSize: 18,
+    fontWeight: '800',
   },
   settingsIcon: {
     color: '#A8A8B4',

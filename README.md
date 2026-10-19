@@ -32,16 +32,29 @@ npx expo lint       # lint
 3. A green bar fills for the hold time (default 2.5s). Any finger that lifts or
    joins restarts the countdown, so the whole group is always in the draw.
 4. The rings start hopping and slow down until they land on one finger: that
-   finger's ring lights up and the card says who pays what.
-5. **Play again** for the next round.
+   finger is out (it's safe), and the rest hold again for the next round.
+5. The last finger left is the unlucky one. **Play again** for the next round.
+
+Not sure what to do? The guide opens on first launch and lives behind the **?**
+button at the top right.
 
 ### Settings (⚙ at the top right)
 
 | Option | What it does |
 | --- | --- |
+| Who pays? | `One pays all` — the last finger left pays the whole bill. `Split by luck` — everyone pays a share, with the first picked paying the least and the last picked paying the most. |
 | Players | `Auto` starts with 2+ fingers. Pick a number (2–10) to require that exact count, so nobody can sit out unnoticed. |
 | Hold time | 1.5s / 2.5s / 3.5s of holding before the pick runs. |
 | Currency | Symbol used for the split amounts. |
+
+### How the weighted split works
+
+In `Split by luck` mode the bill is divided into shares that grow with the pick
+order. With a 1000 bill and 4 players the shares are **100 / 200 / 300 / 400**:
+the first finger picked pays 100, the last pays 400. Shares are rounded to cents
+and the remainder goes to the largest shares, so they always add up to exactly
+the bill. The settings sheet shows a live example of the split.
+
 
 ## How it stays fair
 
@@ -62,10 +75,11 @@ App.tsx                          screen: header, touch surface, pick logic, spin
 src/hooks/useMultiTouch.ts       tracks every finger on the surface at once
 src/components/FingerRing.tsx    the coloured ring drawn under a fingertip
 src/components/StatusOverlay.tsx instructions + hold countdown
-src/components/ResultBanner.tsx  "Finger #3 doesn't pay" + the split
-src/components/SettingsSheet.tsx settings modal
+src/components/ResultBanner.tsx  who pays: one winner, or the weighted split table
+src/components/SettingsSheet.tsx settings modal, with a live split preview
+src/components/HelpSheet.tsx     the "how to play" guide for first-time users
 src/lib/random.ts                the draw
-src/lib/money.ts                 bill parsing / formatting
+src/lib/money.ts                 bill parsing / formatting / weighted shares
 src/types.ts, src/constants.ts   shared types, palette, defaults
 ```
 
@@ -90,7 +104,7 @@ are filtered out, so they never create a ring.
   reported. If your group is bigger than the limit, play in two groups or use a tablet.
 * A desktop simulator can only press one point at a time (hold ⌥/Alt in the iOS
   simulator for a second point), so test the multi-finger flow on a real device.
-* The bill field is a plain optional number — no currency conversion, tips, or
+* The bill field is a plain optional number  no currency conversion, tips, or
   per-person history is stored.
 * Everything resets on reload: settings aren't persisted yet. `expo-sqlite` or
   `@react-native-async-storage/async-storage` would be the way to remember them.

@@ -1,7 +1,5 @@
-import { Platform } from 'react-native';
+import { Platform, Vibration } from 'react-native';
 import * as Haptics from 'expo-haptics';
-
-
 
 const ANDROID_API =
   Platform.OS === 'android' && typeof Platform.Version === 'number'
@@ -30,16 +28,27 @@ async function systemAndroid(type: Haptics.AndroidHaptics): Promise<boolean> {
   }
 }
 
+
+function androidBuzz(pattern: number | number[]): void {
+  try {
+    Vibration.vibrate(pattern);
+  } catch (error) {
+    report('android:vibrate', error);
+  }
+}
+
 function fire(scope: string, run: () => Promise<void>): void {
   run().catch((error) => report(scope, error));
 }
 
+/** A solid buzz when the spin starts. */
 export function hapticImpact(): void {
   fire('impact', async () => {
-    if (
-      ANDROID_API >= CONFIRM_API &&
-      (await systemAndroid(Haptics.AndroidHaptics.Confirm))
-    ) {
+    if (Platform.OS === 'android') {
+      androidBuzz(30);
+      if (ANDROID_API >= CONFIRM_API) {
+        await systemAndroid(Haptics.AndroidHaptics.Confirm);
+      }
       return;
     }
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -48,13 +57,11 @@ export function hapticImpact(): void {
 
 export function hapticTick(): void {
   fire('tick', async () => {
-    if (
-      ANDROID_API >= SEGMENT_TICK_API &&
-      (await systemAndroid(Haptics.AndroidHaptics.Segment_Tick))
-    ) {
-      return;
-    }
-    if (await systemAndroid(Haptics.AndroidHaptics.Clock_Tick)) {
+    if (Platform.OS === 'android') {
+      androidBuzz(12);
+      if (ANDROID_API >= SEGMENT_TICK_API) {
+        await systemAndroid(Haptics.AndroidHaptics.Segment_Tick);
+      }
       return;
     }
     await Haptics.selectionAsync();
@@ -67,11 +74,15 @@ export function hapticResult(safe: boolean): void {
     : Haptics.NotificationFeedbackType.Error;
 
   fire('result', async () => {
-    const androidType = safe
-      ? Haptics.AndroidHaptics.Confirm
-      : Haptics.AndroidHaptics.Reject;
-
-    if (ANDROID_API >= CONFIRM_API && (await systemAndroid(androidType))) {
+    if (Platform.OS === 'android') {
+      androidBuzz(safe ? [0, 45, 70, 90] : [0, 140, 90, 140, 90, 260]);
+      if (ANDROID_API >= CONFIRM_API) {
+        await systemAndroid(
+          safe
+            ? Haptics.AndroidHaptics.Confirm
+            : Haptics.AndroidHaptics.Reject,
+        );
+      }
       return;
     }
     await Haptics.notificationAsync(type);

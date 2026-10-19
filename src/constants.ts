@@ -1,4 +1,4 @@
-import type { Settings } from './types';
+import type { Settings, SplitMode } from './types';
 
 /** Ring colours, handed out in order as fingers land. Tuned for a black background. */
 export const PALETTE = [
@@ -35,10 +35,29 @@ export const HOLD_OPTIONS: { label: string; ms: number }[] = [
 
 export const CURRENCY_OPTIONS = ['रू', '$', '€', '£', '¥'];
 
+export const SPLIT_OPTIONS: {
+  value: SplitMode;
+  label: string;
+  short: string;
+}[] = [
+  {
+    value: 'one-pays',
+    label: 'One pays all',
+    short: 'The last finger left pays the whole bill.',
+  },
+  {
+    value: 'weighted',
+    label: 'Split by luck',
+    short:
+      'Everyone pays. First picked pays the least, last picked pays the most.',
+  },
+];
+
 export const DEFAULT_SETTINGS: Settings = {
   exactPlayers: null,
   holdMs: 2500,
   currency: 'रू',
+  splitMode: 'one-pays',
   sound: true,
   haptics: true,
 };
