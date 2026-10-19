@@ -22,7 +22,7 @@ const STEPS: { icon: string; title: string; body: string }[] = [
   {
     icon: '2',
     title: 'Everyone puts one finger down',
-    body: 'All players touch the black area at the same time  one finger each. The coloured rings show who is in.',
+    body: 'All players touch the black area at the same time, one finger each. The coloured rings show who is in.',
   },
   {
     icon: '3',
@@ -75,7 +75,7 @@ export function HelpSheet({ visible, onClose, onOpenSettings }: Props) {
             <View style={styles.tip}>
               <Text style={styles.tipTitle}>Good to know</Text>
               <Text style={styles.tipBody}>
-                • The pick is random and fair finger position or colour never
+                • The pick is random and fair, and finger position or colour never
                 changes the odds.{'\n'}• A phone usually reads up to 5 fingers at
                 once; a tablet up to 10.{'\n'}• Lift all hands to start a fresh
                 round with new numbers.
