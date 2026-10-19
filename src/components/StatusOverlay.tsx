@@ -42,7 +42,7 @@ export function StatusOverlay({
         : splitMode === 'weighted'
           ? 'Picked!'
           : 'Safe!';
-    subtitle = `${count} finger${count === 1 ? '' : 's'} left — lift yours, the rest keep holding.`;
+    subtitle = `${count} finger${count === 1 ? '' : 's'} left lift yours, the rest keep holding.`;
   } else if (phase === 'spinning') {
     title = 'Choosing…';
     subtitle = 'Fingers off! Keep holding.';
@@ -66,7 +66,7 @@ export function StatusOverlay({
     title = `${count} finger${count === 1 ? '' : 's'} in`;
     subtitle =
       splitMode === 'weighted'
-        ? 'Get set — first picked pays least, last pays most.'
+        ? 'Get set  first picked pays least, last pays most.'
         : 'Get set.';
   }
 
