@@ -25,6 +25,44 @@ npx tsc --noEmit    # types
 npx expo lint       # lint
 ```
 
+## Build an Android APK
+
+Build a standalone release APK locally with Gradle (no EAS account needed):
+
+```bash
+cd android
+./gradlew assembleRelease
+```
+
+The APK lands at:
+
+```
+android/app/build/outputs/apk/release/app-release.apk
+```
+
+Install it on a connected phone or emulator:
+
+```bash
+adb install -r android/app/build/outputs/apk/release/app-release.apk
+```
+
+Notes:
+
+* This local build signs with `android/app/debug.keystore`, which is fine for
+  testing on your own device but **not** for the Play Store. For a store build
+  generate a real keystore and add it to `signingConfigs` in
+  `android/app/build.gradle`, or use EAS (`eas build -p android --profile preview`).
+* Gradle caches the JS bundle. If a code change doesn't show up in the APK,
+  delete the cached bundle and rebuild:
+  ```bash
+  rm -rf android/app/build/generated/assets/react
+  cd android && ./gradlew assembleRelease
+  ```
+* To build the release APK in the cloud instead (EAS signs it for you):
+  ```bash
+  npx eas-cli build -p android --profile preview
+  ```
+
 ## How to play
 
 1. Optionally type the bill total in the field at the top (e.g. `1200`).
