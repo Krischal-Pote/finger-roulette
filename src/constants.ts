@@ -1,4 +1,4 @@
-import type { Settings, SplitMode } from './types';
+import type { GameMode, Settings, SplitMode } from './types';
 
 /** Ring colours, handed out in order as fingers land. Tuned for a black background. */
 export const PALETTE = [
@@ -53,7 +53,38 @@ export const SPLIT_OPTIONS: {
   },
 ];
 
+export const MODE_OPTIONS: {
+  value: GameMode;
+  label: string;
+  short: string;
+  hint: string;
+}[] = [
+  {
+    value: 'bill',
+    label: 'Bill split',
+    short: 'Pick who pays',
+    hint: 'Type a bill, then draw the unlucky finger.',
+  },
+  {
+    value: 'first',
+    label: 'Who first?',
+    short: 'Pick one at random',
+    hint: 'One fair draw decides who goes first.',
+  },
+  {
+    value: 'hot',
+    label: 'Hot finger',
+    short: 'Last light loses',
+    hint: 'Rings jump until one finger gets burned.',
+  },
+];
+
+export function modeLabel(mode: GameMode): string {
+  return MODE_OPTIONS.find((option) => option.value === mode)?.label ?? 'Round';
+}
+
 export const DEFAULT_SETTINGS: Settings = {
+  gameMode: 'bill',
   exactPlayers: null,
   holdMs: 2500,
   currency: 'रू',

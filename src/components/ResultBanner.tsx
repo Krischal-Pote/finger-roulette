@@ -1,7 +1,7 @@
 import { StyleSheet, Text, View } from 'react-native';
 
 import { formatMoney, weightedShares } from '../lib/money';
-import type { Finger, SplitMode } from '../types';
+import type { Finger, GameMode, SplitMode } from '../types';
 
 const ORDINALS = ['1st', '2nd', '3rd', '4th', '5th', '6th', '7th', '8th', '9th', '10th'];
 
@@ -10,6 +10,7 @@ function ordinal(index: number): string {
 }
 
 type Props = {
+  mode: GameMode;
   winner: Finger | null;
   /** Fingers in the order the roulette picked them (the winner is not in here). */
   picked: Finger[];
@@ -20,6 +21,7 @@ type Props = {
 };
 
 export function ResultBanner({
+  mode,
   winner,
   picked,
   playerCount,
@@ -29,6 +31,35 @@ export function ResultBanner({
 }: Props) {
   if (!winner) {
     return null;
+  }
+
+  if (mode !== 'bill') {
+    const isHot = mode === 'hot';
+    const others = Math.max(0, playerCount - 1);
+
+    return (
+      <View pointerEvents="none" style={styles.wrap}>
+        <View style={[styles.card, { borderColor: winner.color }]}>
+          <Text style={styles.kicker}>
+            {isHot ? 'HOT FINGER' : 'WHO GOES FIRST?'}
+          </Text>
+          <Text style={[styles.big, { color: winner.color }]}>
+            Finger #{winner.order}
+          </Text>
+          <Text style={styles.free}>
+            {isHot ? 'got burned 🔥' : 'goes first 🎉'}
+          </Text>
+
+          <View style={styles.divider} />
+
+          <Text style={styles.splitHint}>
+            {isHot
+              ? 'Play again to burn someone else.'
+              : `${others} other${others === 1 ? '' : 's'} can relax.`}
+          </Text>
+        </View>
+      </View>
+    );
   }
 
   // Weighted mode: the last finger left was picked last, so it pays the most.

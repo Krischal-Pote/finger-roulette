@@ -23,7 +23,21 @@ export type Phase = 'idle' | 'spinning' | 'safe' | 'result';
 
 export type SplitMode = 'one-pays' | 'weighted';
 
+
+export type GameMode = 'bill' | 'first' | 'hot';
+
+export type RoundRecord = {
+  id: string;
+  at: number;
+  mode: GameMode;
+  players: number;
+  winnerOrder: number;
+  winnerColor: string;
+  amount: number | null;
+};
+
 export type Settings = {
+  gameMode: GameMode;
   /** Players required to start. `null` means "at least 2, any number". */
   exactPlayers: number | null;
   /** How long every finger must stay still before the pick runs. */

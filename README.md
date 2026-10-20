@@ -4,6 +4,14 @@ Everyone puts one finger on the black screen. After a short "hold still"
 countdown the app picks **one** finger at random — that person doesn't pay, and
 the rest split the bill. No dice, no arguing.
 
+Three modes share the same fair draw:
+
+| Mode | What it does |
+| --- | --- |
+| **Bill split** | Elimination rounds: each safe finger drops out, the last finger left pays the bill. |
+| **Who first?** | One draw that decides who goes first — no bill, no eliminations. |
+| **Hot finger** | The rings hop faster and faster until one is lit; that finger gets burned. |
+
 Built with Expo / React Native, runs on iOS and Android, and needs no gesture
 library — a plain `<View>` taps into the raw multi-touch stream.
 
@@ -15,8 +23,9 @@ npx expo start          # then press i (iOS) or a (Android)
 ```
 
 Scan the QR code with **Expo Go**, or press `i` / `a` for a simulator. The app
-uses `expo-haptics`, `expo-keep-awake` and `react-native-safe-area-context`, all
-of which are already bundled in Expo Go, so no development build is needed.
+uses `expo-haptics`, `expo-keep-awake`, `react-native-safe-area-context` and
+`@react-native-async-storage/async-storage`, all of which are bundled in Expo
+Go, so no development build is needed.
 
 Checks used while building:
 
@@ -65,13 +74,16 @@ Notes:
 
 ## How to play
 
-1. Optionally type the bill total in the field at the top (e.g. `1200`).
-2. Everyone puts one finger on the black area and keeps it there.
-3. A green bar fills for the hold time (default 2.5s). Any finger that lifts or
+1. Pick a mode at the top: **Bill split**, **Who first?** or **Hot finger**.
+2. In Bill split you can optionally type the bill total (e.g. `1200`).
+3. Everyone puts one finger on the black area and keeps it there.
+4. A green bar fills for the hold time (default 2.5s). Any finger that lifts or
    joins restarts the countdown, so the whole group is always in the draw.
-4. The rings start hopping and slow down until they land on one finger: that
-   finger is out (it's safe), and the rest hold again for the next round.
-5. The last finger left is the unlucky one. **Play again** for the next round.
+5. In Bill split the rings start hopping and slow down until they land on one
+   finger: that finger is out (it's safe), and the rest hold again for the next
+   round. The last finger left is the unlucky one.
+6. In Who first? and Hot finger the draw is a single round — the banner shows
+   the finger that was picked. **Play again** for the next round.
 
 Not sure what to do? The guide opens on first launch and lives behind the **?**
 button at the top right.
@@ -84,6 +96,10 @@ button at the top right.
 | Players | `Auto` starts with 2+ fingers. Pick a number (2–10) to require that exact count, so nobody can sit out unnoticed. |
 | Hold time | 1.5s / 2.5s / 3.5s of holding before the pick runs. |
 | Currency | Symbol used for the split amounts. |
+
+The sheet also lists the **last 20 rounds** (mode, picked finger, player count,
+time, and bill total when there was one) and has a **Clear** button. Settings
+and history are saved with AsyncStorage and survive an app restart.
 
 ### How the weighted split works
 
@@ -109,15 +125,17 @@ the bill. The settings sheet shows a live example of the split.
 ## Files
 
 ```
-App.tsx                          screen: header, touch surface, pick logic, spin animation
+App.tsx                          screen: header, mode bar, touch surface, pick logic, spin animation
 src/hooks/useMultiTouch.ts       tracks every finger on the surface at once
+src/components/ModeBar.tsx       Bill split / Who first? / Hot finger switch
 src/components/FingerRing.tsx    the coloured ring drawn under a fingertip
 src/components/StatusOverlay.tsx instructions + hold countdown
-src/components/ResultBanner.tsx  who pays: one winner, or the weighted split table
-src/components/SettingsSheet.tsx settings modal, with a live split preview
+src/components/ResultBanner.tsx  who pays, who goes first, or who got burned
+src/components/SettingsSheet.tsx settings modal, split preview, recent rounds
 src/components/HelpSheet.tsx     the "how to play" guide for first-time users
 src/lib/random.ts                the draw
 src/lib/money.ts                 bill parsing / formatting / weighted shares
+src/lib/storage.ts               persisted settings + round history
 src/types.ts, src/constants.ts   shared types, palette, defaults
 ```
 
@@ -142,11 +160,11 @@ are filtered out, so they never create a ring.
   reported. If your group is bigger than the limit, play in two groups or use a tablet.
 * A desktop simulator can only press one point at a time (hold ⌥/Alt in the iOS
   simulator for a second point), so test the multi-finger flow on a real device.
-* The bill field is a plain optional number  no currency conversion, tips, or
-  per-person history is stored.
-* Everything resets on reload: settings aren't persisted yet. `expo-sqlite` or
-  `@react-native-async-storage/async-storage` would be the way to remember them.
+* The bill field is a plain optional number: no currency conversion, tips, or
+  per-person tracking.
+* Settings and the last 20 rounds are persisted with AsyncStorage. History is
+  local to the device and can be cleared from Settings.
 * There is no navigation anywhere in the app yet, so it keeps the template's
-  single-screen `App.tsx` entry point rather than adding Expo Router. If you add
-  more screens (history, groups), move the screen into `src/app/` and add
-  `expo-router`.
+  single-screen `App.tsx` entry point rather than adding Expo Router. The mode
+  bar is a switch, not a route. If you add full screens (history, groups), move
+  the screen into `src/app/` and add `expo-router`.

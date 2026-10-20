@@ -11,17 +11,20 @@ import {
   CURRENCY_OPTIONS,
   HOLD_OPTIONS,
   MIN_PLAYERS,
+  modeLabel,
   PLAYER_OPTIONS,
   SPLIT_OPTIONS,
 } from '../constants';
 import { formatMoney, weightedShares } from '../lib/money';
-import type { Settings } from '../types';
+import type { RoundRecord, Settings } from '../types';
 
 type Props = {
   visible: boolean;
   settings: Settings;
   maxSeen: number;
+  history: RoundRecord[];
   onChange: (patch: Partial<Settings>) => void;
+  onClearHistory: () => void;
   onClose: () => void;
 };
 
@@ -81,11 +84,26 @@ function SplitPreview({ settings }: { settings: Settings }) {
   );
 }
 
+/** Compact timestamp without relying on Intl support in the JS engine. */
+function formatWhen(at: number): string {
+  const date = new Date(at);
+  const now = new Date();
+  if (date.toDateString() !== now.toDateString()) {
+    return `${date.getMonth() + 1}/${date.getDate()}`;
+  }
+  const hours = date.getHours();
+  const suffix = hours < 12 ? 'AM' : 'PM';
+  const hour = hours % 12 || 12;
+  return `${hour}:${String(date.getMinutes()).padStart(2, '0')} ${suffix}`;
+}
+
 export function SettingsSheet({
   visible,
   settings,
   maxSeen,
+  history,
   onChange,
+  onClearHistory,
   onClose,
 }: Props) {
   return (
@@ -213,6 +231,49 @@ export function SettingsSheet({
                 onPress={() => onChange({ haptics: !settings.haptics })}
               />
             </View>
+
+            <Text style={styles.groupLabel}>Recent rounds</Text>
+            <View style={styles.historyHeader}>
+              <Text style={styles.groupHint}>
+                The last draws, saved on this device.
+              </Text>
+              {history.length > 0 ? (
+                <Pressable onPress={onClearHistory} hitSlop={10}>
+                  <Text style={styles.clearHistory}>Clear</Text>
+                </Pressable>
+              ) : null}
+            </View>
+            {history.length === 0 ? (
+              <Text style={styles.emptyHistory}>
+                Nothing yet. Finish a round and it shows up here.
+              </Text>
+            ) : (
+              <View style={styles.historyList}>
+                {history.slice(0, 6).map((record) => (
+                  <View key={record.id} style={styles.historyRow}>
+                    <View
+                      style={[
+                        styles.historyDot,
+                        { backgroundColor: record.winnerColor },
+                      ]}
+                    />
+                    <View style={styles.historyText}>
+                      <Text style={styles.historyTitle}>
+                        {modeLabel(record.mode)} · Finger #{record.winnerOrder}
+                      </Text>
+                      <Text style={styles.historyMeta}>
+                        {record.players} players · {formatWhen(record.at)}
+                      </Text>
+                    </View>
+                    {record.amount !== null ? (
+                      <Text style={styles.historyAmount}>
+                        {formatMoney(record.amount, settings.currency)}
+                      </Text>
+                    ) : null}
+                  </View>
+                ))}
+              </View>
+            )}
 
             <Text style={styles.info}>
               {maxSeen > 0
@@ -389,6 +450,62 @@ const styles = StyleSheet.create({
     color: '#6B6B76',
     fontSize: 12,
     lineHeight: 18,
+  },
+  historyHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  clearHistory: {
+    marginTop: 4,
+    color: '#FF8A8A',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  emptyHistory: {
+    marginTop: 10,
+    color: '#6B6B76',
+    fontSize: 12,
+    fontStyle: 'italic',
+  },
+  historyList: {
+    marginTop: 10,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#1F1F27',
+    backgroundColor: '#0B0B10',
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+  },
+  historyRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingVertical: 8,
+  },
+  historyDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+  },
+  historyText: {
+    flex: 1,
+  },
+  historyTitle: {
+    color: '#D4D4DC',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  historyMeta: {
+    marginTop: 2,
+    color: '#6B6B76',
+    fontSize: 11,
+  },
+  historyAmount: {
+    color: '#F4F4F6',
+    fontSize: 13,
+    fontWeight: '700',
   },
   done: {
     marginTop: 18,

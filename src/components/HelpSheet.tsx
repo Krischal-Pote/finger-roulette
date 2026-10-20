@@ -16,8 +16,8 @@ type Props = {
 const STEPS: { icon: string; title: string; body: string }[] = [
   {
     icon: '1',
-    title: 'Type the bill (optional)',
-    body: 'Tap the box at the top and enter the total, e.g. 1200. You can skip it and just use the app to pick someone.',
+    title: 'Pick a mode',
+    body: 'Bill split decides who pays. Who first? and Hot finger use the same fair draw for any decision or party game.',
   },
   {
     icon: '2',
@@ -32,12 +32,17 @@ const STEPS: { icon: string; title: string; body: string }[] = [
   {
     icon: '4',
     title: 'Watch the rings hop',
-    body: 'One finger is picked at random each round. In "One pays all" the last finger left pays everything.',
+    body: 'One finger is picked at random. In Bill split the last finger left pays everything, and each safe finger holds again for the next round.',
   },
   {
     icon: '5',
+    title: 'Hot finger (optional)',
+    body: 'The rings hop faster and faster until one finger is lit: that one gets burned. One fast draw, no eliminations.',
+  },
+  {
+    icon: '6',
     title: 'Split by luck (optional)',
-    body: 'Turn this on in Settings and everyone pays a share: the first finger picked pays the least and the last pays the most.',
+    body: 'Turn this on in Settings for bill rounds and everyone pays a share: the first finger picked pays the least and the last pays the most.',
   },
 ];
 
@@ -77,8 +82,9 @@ export function HelpSheet({ visible, onClose, onOpenSettings }: Props) {
               <Text style={styles.tipBody}>
                 • The pick is random and fair, and finger position or colour never
                 changes the odds.{'\n'}• A phone usually reads up to 5 fingers at
-                once; a tablet up to 10.{'\n'}• Lift all hands to start a fresh
-                round with new numbers.
+                once; a tablet up to 10.{'\n'}• Settings and the last 20 rounds are
+                saved on this device.{'\n'}• Lift all hands to start a fresh round
+                with new numbers.
               </Text>
             </View>
           </ScrollView>

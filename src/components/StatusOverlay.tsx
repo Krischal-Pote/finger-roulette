@@ -1,8 +1,9 @@
 import { StyleSheet, Text, View } from 'react-native';
 
-import type { Phase, SplitMode } from '../types';
+import type { GameMode, Phase, SplitMode } from '../types';
 
 type Props = {
+  mode: GameMode;
   phase: Phase;
   count: number;
   required: number;
@@ -16,6 +17,7 @@ type Props = {
 
 /** The instruction / countdown text shown above the fingers, on the black surface. */
 export function StatusOverlay({
+  mode,
   phase,
   count,
   required,
@@ -44,8 +46,13 @@ export function StatusOverlay({
           : 'Safe!';
     subtitle = `${count} finger${count === 1 ? '' : 's'} left. Lift yours, the rest keep holding.`;
   } else if (phase === 'spinning') {
-    title = 'Choosing…';
-    subtitle = 'Fingers off! Keep holding.';
+    title = mode === 'hot' ? 'Hot finger…' : 'Choosing…';
+    subtitle =
+      mode === 'hot'
+        ? 'The finger lit up last gets burned.'
+        : mode === 'first'
+          ? 'Picking who goes first.'
+          : 'Fingers off! Keep holding.';
   } else if (
     exactPlayers !== null &&
     count > 0 &&
@@ -65,9 +72,13 @@ export function StatusOverlay({
   } else {
     title = `${count} finger${count === 1 ? '' : 's'} in`;
     subtitle =
-      splitMode === 'weighted'
-        ? 'Get set. First picked pays least, last pays most.'
-        : 'Get set.';
+      mode === 'hot'
+        ? 'Get set. The last finger lit up is out.'
+        : mode === 'first'
+          ? 'Get set. One finger gets picked.'
+          : splitMode === 'weighted'
+            ? 'Get set. First picked pays least, last pays most.'
+            : 'Get set.';
   }
 
   return (

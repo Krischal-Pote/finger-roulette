@@ -10,10 +10,16 @@ import {
 
 import { FingerRing } from './src/components/FingerRing';
 import { HelpSheet } from './src/components/HelpSheet';
+import { ModeBar } from './src/components/ModeBar';
 import { ResultBanner } from './src/components/ResultBanner';
 import { SettingsSheet } from './src/components/SettingsSheet';
 import { StatusOverlay } from './src/components/StatusOverlay';
-import { DEFAULT_SETTINGS, MIN_PLAYERS, SAFE_PAUSE_MS } from './src/constants';
+import {
+  DEFAULT_SETTINGS,
+  MIN_PLAYERS,
+  MODE_OPTIONS,
+  SAFE_PAUSE_MS,
+} from './src/constants';
 import { useMultiTouch } from './src/hooks/useMultiTouch';
 import {
   hapticImpact,
@@ -22,14 +28,20 @@ import {
 } from './src/lib/haptics';
 import { parseAmount } from './src/lib/money';
 import { pickRandomIndex } from './src/lib/random';
+import { HISTORY_LIMIT, loadAppState, saveHistory, saveSettings } from './src/lib/storage';
 import type { RingMode } from './src/components/FingerRing';
-import type { Finger, Phase, Settings } from './src/types';
+import type { Finger, GameMode, Phase, RoundRecord, Settings } from './src/types';
 
 /** Roulette feel: how many rings to hop, first delay, and the slowdown per hop. */
 const SPIN_STEPS = 22;
 const SPIN_FIRST_DELAY_MS = 40;
 const SPIN_SLOWDOWN = 1.1;
 const TICK_MS = 50;
+
+/** Hot finger: fast random hops, then a slowdown over the last few rings. */
+const HOT_FIRST_DELAY_MS = 80;
+const HOT_SLOWDOWN = 1.55;
+const HOT_SLOW_STEPS = 6;
 
 let guideSeen = false;
 
@@ -48,6 +60,8 @@ function Game() {
 
   const [phase, setPhase] = useState<Phase>('idle');
   const [settings, setSettings] = useState<Settings>(DEFAULT_SETTINGS);
+  const [history, setHistory] = useState<RoundRecord[]>([]);
+  const [ready, setReady] = useState(false);
   const [billText, setBillText] = useState('');
   const [progress, setProgress] = useState(0);
   const [highlightId, setHighlightId] = useState<number | null>(null);
@@ -90,6 +104,33 @@ function Game() {
     guideSeen = true;
   }, []);
 
+  useEffect(() => {
+    let alive = true;
+    loadAppState().then((state) => {
+      if (!alive) {
+        return;
+      }
+      setSettings(state.settings);
+      setHistory(state.history);
+      setReady(true);
+    });
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (ready) {
+      void saveSettings(settings);
+    }
+  }, [ready, settings]);
+
+  useEffect(() => {
+    if (ready) {
+      void saveHistory(history);
+    }
+  }, [ready, history]);
+
   // Fingers are only read while collecting. During the spin and between rounds
   // the set is frozen, so the pick can never change under the players.
   const interactive = phase === 'idle' && !settingsOpen;
@@ -111,13 +152,38 @@ function Game() {
 
   const spinTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const safeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const rosterSizeRef = useRef(0);
 
-  const startSpin = useCallback(() => {
+  const billRef = useRef<number | null>(null);
+  useEffect(() => {
+    billRef.current = parseAmount(billText);
+  }, [billText]);
+
+  const recordRound = useCallback((finger: Finger, players: number) => {
+    const mode = settingsRef.current.gameMode;
+    const at = Date.now();
+    const record: RoundRecord = {
+      id: `${at}-${finger.order}-${Math.random().toString(36).slice(2, 6)}`,
+      at,
+      mode,
+      players,
+      winnerOrder: finger.order,
+      winnerColor: finger.color,
+      amount: mode === 'bill' ? billRef.current : null,
+    };
+    setHistory((prev) => [record, ...prev].slice(0, HISTORY_LIMIT));
+  }, []);
+
+  const startRound = useCallback(() => {
+    const mode = settingsRef.current.gameMode;
     const eliminatedIds = eliminatedRef.current;
-    // Only fingers still in the running can be picked.
-    const list = fingersRef.current.filter(
-      (finger) => !eliminatedIds.includes(finger.id),
-    );
+    // Only the bill game eliminates; the other modes are a single draw.
+    const list =
+      mode === 'bill'
+        ? fingersRef.current.filter(
+            (finger) => !eliminatedIds.includes(finger.id),
+          )
+        : fingersRef.current;
     if (list.length < MIN_PLAYERS) {
       return;
     }
@@ -128,6 +194,11 @@ function Game() {
     const total = list.length;
     const targetIndex = pickRandomIndex(total);
     const target = list[targetIndex];
+    const steps = mode === 'hot' ? 26 + pickRandomIndex(16) : SPIN_STEPS;
+
+    if (mode === 'bill' && eliminatedIds.length === 0) {
+      rosterSizeRef.current = total;
+    }
 
     if (haptics) {
       hapticImpact();
@@ -136,12 +207,12 @@ function Game() {
     setProgress(0);
 
     let step = 0;
-    let delay = SPIN_FIRST_DELAY_MS;
+    let delay = mode === 'hot' ? HOT_FIRST_DELAY_MS : SPIN_FIRST_DELAY_MS;
 
     const tick = () => {
       // Walk the rings and land exactly on the drawn finger.
       const index =
-        (((targetIndex - (SPIN_STEPS - 1) + step) % total) + total) % total;
+        (((targetIndex - (steps - 1) + step) % total) + total) % total;
       setHighlightId(list[index].id);
       if (step > 0) {
         if (haptics) {
@@ -153,8 +224,23 @@ function Game() {
       }
       step += 1;
 
-      if (step >= SPIN_STEPS) {
+      if (step >= steps) {
         setHighlightId(null);
+
+        if (mode !== 'bill') {
+          setWinner(target);
+          setRosterSize(total);
+          setPhase('result');
+          recordRound(target, total);
+          if (sound) {
+            replay(mode === 'hot' ? sounds.pay : sounds.safe);
+          }
+          if (haptics) {
+            hapticResult(mode !== 'hot');
+          }
+          return;
+        }
+
         setSafeOrder(target.order);
         setRosterSize((prev) => (prev === 0 ? total : prev));
         setEliminated([...eliminatedIds, target.id]);
@@ -162,8 +248,10 @@ function Game() {
 
         const remaining = list.filter((finger) => finger.id !== target.id);
         if (remaining.length <= 1) {
-          setWinner(remaining[0] ?? target);
+          const loser = remaining[0] ?? target;
+          setWinner(loser);
           setPhase('result');
+          recordRound(loser, rosterSizeRef.current || total);
           if (sound) {
             replay(sounds.pay);
           }
@@ -186,12 +274,20 @@ function Game() {
         return;
       }
 
-      delay *= SPIN_SLOWDOWN;
+      if (mode === 'hot') {
+        const remaining = steps - step;
+        delay =
+          remaining <= HOT_SLOW_STEPS
+            ? 120 * Math.pow(HOT_SLOWDOWN, HOT_SLOW_STEPS - remaining)
+            : HOT_FIRST_DELAY_MS + pickRandomIndex(45);
+      } else {
+        delay *= SPIN_SLOWDOWN;
+      }
       spinTimer.current = setTimeout(tick, delay);
     };
 
     tick();
-  }, []);
+  }, [recordRound]);
 
   useEffect(() => {
     return () => {
@@ -232,12 +328,12 @@ function Game() {
       setProgress(value);
       if (value >= 1) {
         clearInterval(id);
-        startSpin();
+        startRound();
       }
     }, TICK_MS);
 
     return () => clearInterval(id);
-  }, [holding, fingerKey, settings.holdMs, startSpin]);
+  }, [holding, fingerKey, settings.holdMs, startRound]);
 
   const playAgain = useCallback(() => {
     if (spinTimer.current) {
@@ -256,10 +352,27 @@ function Game() {
     setRosterSize(0);
     setPicked([]);
     setProgress(0);
+    rosterSizeRef.current = 0;
     resetFingers();
   }, [resetFingers]);
 
+  const changeMode = useCallback(
+    (gameMode: GameMode) => {
+      if (gameMode === settingsRef.current.gameMode) {
+        return;
+      }
+      playAgain();
+      setSettings((prev) => ({ ...prev, gameMode }));
+    },
+    [playAgain],
+  );
+
+  const clearHistory = useCallback(() => setHistory([]), []);
+
   const bill = parseAmount(billText);
+  const modeOption = MODE_OPTIONS.find(
+    (option) => option.value === settings.gameMode,
+  );
 
   const modeOf = (finger: Finger): RingMode => {
     if (phase === 'result' && winner?.id === finger.id) {
@@ -279,23 +392,32 @@ function Game() {
       <StatusBar style="light" />
 
       <View style={[styles.header, { paddingTop: insets.top + 10 }]}>
-        <View style={styles.billBox}>
-          <Text style={styles.billCurrency}>{settings.currency}</Text>
-          <TextInput
-            value={billText}
-            onChangeText={setBillText}
-            placeholder="Bill total (optional)"
-            placeholderTextColor="#5A5A66"
-            keyboardType="decimal-pad"
-            style={styles.billInput}
-            editable={phase !== 'spinning'}
-          />
-          {billText.length > 0 ? (
-            <Pressable onPress={() => setBillText('')} hitSlop={12}>
-              <Text style={styles.clear}>✕</Text>
-            </Pressable>
-          ) : null}
-        </View>
+        {settings.gameMode === 'bill' ? (
+          <View style={styles.billBox}>
+            <Text style={styles.billCurrency}>{settings.currency}</Text>
+            <TextInput
+              value={billText}
+              onChangeText={setBillText}
+              placeholder="Bill total (optional)"
+              placeholderTextColor="#5A5A66"
+              keyboardType="decimal-pad"
+              style={styles.billInput}
+              editable={phase !== 'spinning'}
+            />
+            {billText.length > 0 ? (
+              <Pressable onPress={() => setBillText('')} hitSlop={12}>
+                <Text style={styles.clear}>✕</Text>
+              </Pressable>
+            ) : null}
+          </View>
+        ) : (
+          <View style={styles.modeSummary}>
+            <Text style={styles.modeTitle}>{modeOption?.label}</Text>
+            <Text style={styles.modeHint} numberOfLines={1}>
+              {modeOption?.hint}
+            </Text>
+          </View>
+        )}
 
         <View style={styles.headerActions}>
           <Pressable
@@ -319,6 +441,8 @@ function Game() {
         </View>
       </View>
 
+      <ModeBar value={settings.gameMode} onChange={changeMode} />
+
       <View
         ref={surfaceRef}
         style={styles.surface}
@@ -330,6 +454,7 @@ function Game() {
         ))}
 
         <StatusOverlay
+          mode={settings.gameMode}
           phase={phase}
           count={activeFingers.length}
           required={minNeeded}
@@ -343,10 +468,11 @@ function Game() {
 
         {phase === 'result' ? (
           <ResultBanner
+            mode={settings.gameMode}
             winner={winner}
             picked={picked}
             playerCount={rosterSize}
-            bill={bill}
+            bill={settings.gameMode === 'bill' ? bill : null}
             currency={settings.currency}
             splitMode={settings.splitMode}
           />
@@ -365,12 +491,14 @@ function Game() {
         visible={settingsOpen}
         settings={settings}
         maxSeen={maxSeen}
+        history={history}
         onChange={(patch) => {
           if (patch.haptics === true && !settings.haptics) {
             hapticImpact();
           }
           setSettings((prev) => ({ ...prev, ...patch }));
         }}
+        onClearHistory={clearHistory}
         onClose={() => setSettingsOpen(false)}
       />
 
@@ -420,6 +548,26 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#22222B',
     backgroundColor: '#101016',
+  },
+  modeSummary: {
+    flex: 1,
+    height: 44,
+    paddingHorizontal: 14,
+    borderRadius: 13,
+    borderWidth: 1,
+    borderColor: '#22222B',
+    backgroundColor: '#101016',
+    justifyContent: 'center',
+  },
+  modeTitle: {
+    color: '#F4F4F6',
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  modeHint: {
+    marginTop: 1,
+    color: '#6B6B76',
+    fontSize: 11,
   },
   billCurrency: {
     color: '#8B8B96',
