@@ -39,6 +39,8 @@
             "enableMinifyInReleaseBuilds": true,
             "enableShrinkResourcesInReleaseBuilds": true,
             "enablePngCrunchInReleaseBuilds": true,
+            "enableBundleCompression": true,
+            "useLegacyPackaging": true,
             "gifEnabled": false,
             "webpEnabled": false
           }

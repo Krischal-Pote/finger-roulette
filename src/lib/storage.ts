@@ -10,6 +10,7 @@ import type {
 
 const SETTINGS_KEY = 'finger-roulette:settings:v1';
 const HISTORY_KEY = 'finger-roulette:history:v1';
+const GUIDE_KEY = 'finger-roulette:guide-shown:v1';
 
 /** Keep the list short - it is a convenience, not a database. */
 export const HISTORY_LIMIT = 20;
@@ -109,11 +110,17 @@ function parseArray(raw: string | null | undefined): unknown[] {
 export async function loadAppState(): Promise<{
   settings: Settings;
   history: RoundRecord[];
+  guideShown: boolean;
 }> {
   try {
-    const pairs = await AsyncStorage.multiGet([SETTINGS_KEY, HISTORY_KEY]);
+    const pairs = await AsyncStorage.multiGet([
+      SETTINGS_KEY,
+      HISTORY_KEY,
+      GUIDE_KEY,
+    ]);
     const settingsRaw = pairs.find(([key]) => key === SETTINGS_KEY)?.[1];
     const historyRaw = pairs.find(([key]) => key === HISTORY_KEY)?.[1];
+    const guideRaw = pairs.find(([key]) => key === GUIDE_KEY)?.[1];
 
     let stored: unknown = null;
     if (settingsRaw) {
@@ -132,9 +139,17 @@ export async function loadAppState(): Promise<{
     return {
       settings: { ...DEFAULT_SETTINGS, ...sanitizeSettings(stored) },
       history,
+      guideShown: guideRaw === '1',
     };
   } catch {
-    return { settings: DEFAULT_SETTINGS, history: [] };
+    return { settings: DEFAULT_SETTINGS, history: [], guideShown: true };
+  }
+}
+
+export async function markGuideShown(): Promise<void> {
+  try {
+    await AsyncStorage.setItem(GUIDE_KEY, '1');
+  } catch {
   }
 }
 

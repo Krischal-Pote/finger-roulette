@@ -87,6 +87,17 @@ cd android
 R8/ProGuard, resource shrinking and PNG crunching are enabled in release builds
 through the `expo-build-properties` plugin in `app.json` — run
 `npx expo prebuild -p android --clean` after changing that config.
+`useLegacyPackaging` and `enableBundleCompression` are also on, so the native
+libraries and the Hermes bundle are deflate-compressed inside the APK. That is
+what keeps the APK under 10 MB, at the cost of a slightly slower install (the
+libraries are extracted once, on install).
+
+Measured release APKs (debug-signed, local Gradle build):
+
+| Architectures | APK size |
+| --- | --- |
+| all four | 25.6 MB |
+| `arm64-v8a` (current phones) | **9.8 MB** |
 
 `eas.json` sets `ORG_GRADLE_PROJECT_reactNativeArchitectures` per profile:
 `preview` APKs are `arm64-v8a` only, `development` adds `x86_64` for emulators,

@@ -28,7 +28,7 @@ import {
 } from './src/lib/haptics';
 import { parseAmount } from './src/lib/money';
 import { pickRandomIndex } from './src/lib/random';
-import { HISTORY_LIMIT, loadAppState, saveHistory, saveSettings } from './src/lib/storage';
+import { HISTORY_LIMIT, loadAppState, markGuideShown, saveHistory, saveSettings } from './src/lib/storage';
 import type { RingMode } from './src/components/FingerRing';
 import type { Finger, GameMode, Phase, RoundRecord, Settings } from './src/types';
 
@@ -42,8 +42,6 @@ const TICK_MS = 50;
 const HOT_FIRST_DELAY_MS = 80;
 const HOT_SLOWDOWN = 1.55;
 const HOT_SLOW_STEPS = 6;
-
-let guideSeen = false;
 
 type Player = ReturnType<typeof useAudioPlayer>;
 
@@ -76,9 +74,9 @@ function Game() {
   const [rosterSize, setRosterSize] = useState(0);
   // Fingers in the order they were picked. Used by the weighted split.
   const [picked, setPicked] = useState<Finger[]>([]);
-  // The guide opens by itself the first time the app runs, then lives behind
-  // the "?" button in the header.
-  const [helpOpen, setHelpOpen] = useState(!guideSeen);
+  // The guide opens by itself only on the very first launch after install, then
+  // lives behind the "?" button in the header.
+  const [helpOpen, setHelpOpen] = useState(false);
 
   // Short sound effects, generated in scripts/generate-sounds.js.
   const tickPlayer = useAudioPlayer(require('./assets/sounds/tick.wav'));
@@ -99,11 +97,6 @@ function Game() {
     setAudioModeAsync({ playsInSilentMode: true }).catch(() => {});
   }, []);
 
-  // Remember that the launch guide has been shown, so it only appears once.
-  useEffect(() => {
-    guideSeen = true;
-  }, []);
-
   useEffect(() => {
     let alive = true;
     loadAppState().then((state) => {
@@ -112,6 +105,10 @@ function Game() {
       }
       setSettings(state.settings);
       setHistory(state.history);
+      if (!state.guideShown) {
+        setHelpOpen(true);
+        void markGuideShown();
+      }
       setReady(true);
     });
     return () => {
