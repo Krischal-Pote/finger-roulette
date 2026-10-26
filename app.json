@@ -31,6 +31,18 @@
           "enableBackgroundPlayback": false,
           "recordAudioAndroid": false
         }
+      ],
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "enableMinifyInReleaseBuilds": true,
+            "enableShrinkResourcesInReleaseBuilds": true,
+            "enablePngCrunchInReleaseBuilds": true,
+            "gifEnabled": false,
+            "webpEnabled": false
+          }
+        }
       ]
     ]
   }

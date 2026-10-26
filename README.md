@@ -72,6 +72,27 @@ Notes:
   npx eas-cli build -p android --profile preview
   ```
 
+### APK size
+
+The APK is dominated by native libraries, one copy per CPU architecture. The
+`assembleRelease` above builds all four ABIs (`armeabi-v7a`, `arm64-v8a`, `x86`,
+`x86_64`), so it is large. To build only the architectures you need:
+
+```bash
+cd android
+./gradlew assembleRelease -PreactNativeArchitectures=arm64-v8a        # phones
+./gradlew assembleRelease -PreactNativeArchitectures=arm64-v8a,x86_64 # phones + emulators
+```
+
+R8/ProGuard, resource shrinking and PNG crunching are enabled in release builds
+through the `expo-build-properties` plugin in `app.json` — run
+`npx expo prebuild -p android --clean` after changing that config.
+
+`eas.json` sets `ORG_GRADLE_PROJECT_reactNativeArchitectures` per profile:
+`preview` APKs are `arm64-v8a` only, `development` adds `x86_64` for emulators,
+and `production` builds an `app-bundle` (Play then delivers only the ABI each
+device needs, so keep all architectures there).
+
 ## How to play
 
 1. Pick a mode at the top: **Bill split**, **Who first?** or **Hot finger**.
