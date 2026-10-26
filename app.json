@@ -43,7 +43,8 @@
             "webpEnabled": false
           }
         }
-      ]
+      ],
+      "expo-asset"
     ]
   }
 }
